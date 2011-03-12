@@ -22,6 +22,7 @@ Interface::
 import errno
 import matplotlib
 import matplotlib.cbook as mpl_cbook
+from matplotlib import verbose as mpl_vrb
 import numpy as np
 import struct
 import subprocess
@@ -41,7 +42,7 @@ class Dvi(object):
         opens the file; actually reading the file happens when
         iterating through the pages of the file.
         """
-        matplotlib.verbose.report('Dvi: ' + filename, 'debug')
+        mpl_vrb.report('Dvi: ' + filename, 'debug')
         self.file = open(filename, 'rb')
         self.dpi = dpi
         self.fonts = {}
@@ -120,7 +121,7 @@ class Dvi(object):
             byte = ord(self.file.read(1))
             self._dispatch(byte)
 #             if self.state == _dvistate.inpage:
-#                 matplotlib.verbose.report(
+#                 mpl_vrb.report(
 #                     'Dvi._read: after %d at %f,%f' %
 #                     (byte, self.h, self.v),
 #                     'debug-annoying')
@@ -253,7 +254,7 @@ class Dvi(object):
         if font._vf is None:
             self.text.append((self.h, self.v, font, char,
                               font._width_of(char)))
-#             matplotlib.verbose.report(
+#             mpl_vrb.report(
 #                 'Dvi._put_char: %d,%d %d' %(self.h, self.v, char),
 #                 'debug-annoying')
         else:
@@ -274,7 +275,7 @@ class Dvi(object):
             raise ValueError, "misplaced put_rule in dvi file"
         if a > 0 and b > 0:
             self.boxes.append((self.h, self.v, a, b))
-#             matplotlib.verbose.report(
+#             mpl_vrb.report(
 #                 'Dvi._put_rule: %d,%d %d,%d' % (self.h, self.v, a, b),
 #                 'debug-annoying')
 
@@ -351,7 +352,7 @@ class Dvi(object):
         self.f = k
 
     def _xxx(self, special):
-        matplotlib.verbose.report(
+        mpl_vrb.report(
             'Dvi._xxx: encountered special: %s'
             % ''.join([(32 <= ord(ch) < 127) and ch
                        or '<%02x>' % ord(ch)
@@ -437,7 +438,7 @@ class DviFont(object):
         if width is not None:
             return _mul2012(width, self._scale)
 
-        matplotlib.verbose.report(
+        mpl_vrb.report(
             'No width for char %d in font %s' % (char, self.texname),
             'debug')
         return 0
@@ -452,7 +453,7 @@ class DviFont(object):
                             (self._tfm.depth, "depth")):
             value = metric.get(char, None)
             if value is None:
-                matplotlib.verbose.report(
+                mpl_vrb.report(
                     'No %s for char %d in font %s' % (name, char, self.texname),
                     'debug')
                 result.append(0)
@@ -538,7 +539,7 @@ class Vf(Dvi):
         if i != 202:
             raise ValueError, "Unknown vf format %d" % i
         if len(x):
-            matplotlib.verbose.report('vf file comment: ' + x, 'debug')
+            mpl_vrb.report('vf file comment: ' + x, 'debug')
         self.state = _dvistate.outer
         # cs = checksum, ds = design size
 
@@ -594,14 +595,14 @@ class Tfm(object):
     __slots__ = ('checksum', 'design_size', 'width', 'height', 'depth')
 
     def __init__(self, filename):
-        matplotlib.verbose.report('opening tfm file ' + filename, 'debug')
+        mpl_vrb.report('opening tfm file ' + filename, 'debug')
         file = open(filename, 'rb')
 
         try:
             header1 = file.read(24)
             lh, bc, ec, nw, nh, nd = \
                 struct.unpack('!6H', header1[2:14])
-            matplotlib.verbose.report(
+            mpl_vrb.report(
                 'lh=%d, bc=%d, ec=%d, nw=%d, nh=%d, nd=%d' % (
                     lh, bc, ec, nw, nh, nd), 'debug')
             header2 = file.read(4*lh)
@@ -670,7 +671,16 @@ class PsfontsMap(object):
             file.close()
 
     def __getitem__(self, texname):
-        result = self._font[texname]
+        try:
+            result = self._font[texname]
+        except KeyError:
+            mpl_vrb.report(
+                'PsfontsMap: KeyError with key %s, %d keys present'
+                % (texname, len(self._font)), 'helpful')
+            mpl_vrb.report(
+                'Keys present: %s' % sorted(self._font.keys()),
+                'debug-annoying')
+            raise
         fn, enc = result.filename, result.encoding
         if fn is not None and not fn.startswith('/'):
             result.filename = find_tex_file(fn)
@@ -713,6 +723,7 @@ class PsfontsMap(object):
         There is some difference between <foo.pfb and <<bar.pfb in
         subsetting, but I have no example of << in my TeX installation.
         """
+        mpl_vrb.report('PsfontsMap: register %s' % words, 'debug-annoying')
         texname, psname = words[:2]
         effects, encodings, filename = '', [], None
         for word in words[2:]:
@@ -730,8 +741,8 @@ class PsfontsMap(object):
 
         if len(encodings) > 1:
             # TODO this is a stopgap workaround, need to handle this correctly
-            matplotlib.verbose.report('Multiple encodings for %s = %s, skipping'
-                                      % (texname, psname), 'debug')
+            mpl_vrb.report('Multiple encodings for %s = %s, skipping'
+                           % (texname, psname), 'debug')
             return
         elif len(encodings) == 1:
             encoding, = encodings
@@ -769,9 +780,9 @@ class Encoding(object):
     def __init__(self, filename):
         file = open(filename, 'rt')
         try:
-            matplotlib.verbose.report('Parsing TeX encoding ' + filename, 'debug-annoying')
+            mpl_vrb.report('Parsing TeX encoding ' + filename, 'debug-annoying')
             self.encoding = self._parse(file)
-            matplotlib.verbose.report('Result: ' + `self.encoding`, 'debug-annoying')
+            mpl_vrb.report('Result: ' + `self.encoding`, 'debug-annoying')
         finally:
             file.close()
 
@@ -831,12 +842,10 @@ def find_tex_file(filename, format=None):
         cmd += ['--format=' + format]
     cmd += [filename]
     
-    matplotlib.verbose.report('find_tex_file(%s): %s' \
-                                  % (filename,cmd), 'debug')
+    mpl_vrb.report('find_tex_file(%s): %s' % (filename,cmd), 'debug')
     pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     result = pipe.communicate()[0].rstrip()
-    matplotlib.verbose.report('find_tex_file result: %s' % result,
-                              'debug')
+    mpl_vrb.report('find_tex_file result: %s' % result, 'debug')
     return result
 
 def _read_nointr(pipe, bufsize=-1):
@@ -882,7 +891,7 @@ def _vffile(texname):
 
 if __name__ == '__main__':
     import sys
-    matplotlib.verbose.set_level('debug-annoying')
+    mpl_vrb.set_level('debug-annoying')
     fname = sys.argv[1]
     try: dpi = float(sys.argv[2])
     except IndexError: dpi = None
