@@ -2069,6 +2069,14 @@ class FigureCanvasBase(object):
     def get_default_filetype(self):
         raise NotImplementedError
 
+    def get_window_title(self):
+        """
+        Get the title text of the window containing the figure.
+        Return None if there is no window (eg, a PS backend).
+        """
+        if hasattr(self, "manager"):
+            return self.manager.get_window_title()
+
     def set_window_title(self, title):
         """
         Set the title text of the window containing the figure.  Note that
@@ -2384,6 +2392,13 @@ class FigureManagerBase:
     def show_popup(self, msg):
         """
         Display message in a popup -- GUI only
+        """
+        pass
+
+    def get_window_title(self):
+        """
+        Get the title text of the window containing the figure.
+        Return None if there is no window (eg, a PS backend).
         """
         pass
 
