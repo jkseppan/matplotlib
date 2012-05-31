@@ -1596,6 +1596,9 @@ class FigureManagerWx(FigureManagerBase):
         #wx.GetApp().ProcessIdle()
         wx.WakeUpIdle()
 
+    def get_window_title(self):
+        return self.window.GetTitle()
+
     def set_window_title(self, title):
         self.window.SetTitle(title)
 
@@ -1859,7 +1862,7 @@ class NavigationToolbar2Wx(NavigationToolbar2, wx.ToolBar):
     def save(self, evt):
         # Fetch the required filename and file type.
         filetypes, exts, filter_index = self.canvas._get_imagesave_wildcards()
-        default_file = "image." + self.canvas.get_default_filetype()
+        default_file = self.canvas.get_default_filename()
         dlg = wx.FileDialog(self._parent, "Save to file", "", default_file,
                             filetypes,
                             wx.SAVE|wx.OVERWRITE_PROMPT)

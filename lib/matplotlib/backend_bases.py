@@ -2065,8 +2065,11 @@ class FigureCanvasBase(object):
 
 
 
-
     def get_default_filetype(self):
+        """
+        Return the default file extension for this canvas, 
+        excluding the leading period.
+        """
         raise NotImplementedError
 
     def get_window_title(self):
@@ -2084,6 +2087,15 @@ class FigureCanvasBase(object):
         """
         if hasattr(self, "manager"):
             self.manager.set_window_title(title)
+
+    def get_default_filename(self):
+        """
+        Return a string, which includes extension, suitable for use as
+        a default filename.
+        """
+        default_filename = self.get_window_title() or 'image'
+        default_filename = default_filename.lower().replace(' ', '_')
+        return default_filename + '.' + self.get_default_filetype()
 
     def switch_backends(self, FigureCanvasClass):
         """
