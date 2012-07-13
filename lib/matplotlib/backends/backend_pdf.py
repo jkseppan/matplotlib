@@ -1420,23 +1420,10 @@ class RendererPdf(RendererBase):
     def __init__(self, file, image_dpi):
         RendererBase.__init__(self)
         self.file = file
-        self.gc = self.new_gc()
+        self.gc = GraphicsContextPdf(self.file)
         self.mathtext_parser = MathTextParser("Pdf")
         self.image_dpi = image_dpi
         self.tex_font_map = None
-
-    def finalize(self):
-        self.file.output(*self.gc.finalize())
-
-    def check_gc(self, gc, fillcolor=None):
-        orig_fill = gc._fillcolor
-        gc._fillcolor = fillcolor
-
-        delta = self.gc.delta(gc)
-        if delta: self.file.output(*delta)
-
-        # Restore gc to avoid unwanted side effects
-        gc._fillcolor = orig_fill
 
     def tex_font_mapping(self, texfont):
         if self.tex_font_map is None:
@@ -1472,7 +1459,8 @@ class RendererPdf(RendererBase):
         return True
 
     def draw_image(self, gc, x, y, im, dx=None, dy=None, transform=None):
-        self.check_gc(gc)
+        clippath, clippath_trans = gc.get_clip_path()
+        # XXX cliprect?
 
         h, w = im.get_size_out()
 
@@ -1488,6 +1476,7 @@ class RendererPdf(RendererBase):
 
         imob = self.file.imageObject(im)
 
+        # XXX set clippath after gsave
         if transform is None:
             self.file.output(Op.gsave,
                              w, 0, 0, h, x, y, Op.concat_matrix,
@@ -1502,11 +1491,18 @@ class RendererPdf(RendererBase):
 
 
     def draw_path(self, gc, path, transform, rgbFace=None):
-        self.check_gc(gc, rgbFace)
+        if rgbFace is not None:
+            if rgbFace[0] == rgbFace[1] == rgbFace[2]:
+                self.file.output(Op.gsave, rgbFace[0], Op.setgray_nonstroke)
+            else:
+                self.file.output(Op.gsave, rgbFace[0], rgbFace[1], rgbFace[2],
+                                 Op.setrgb_nonstroke)
         self.file.writePath(
             path, transform,
             rgbFace is None and gc.get_hatch_path() is None)
         self.file.output(self.gc.paint())
+        if rgbFace is not None:
+            self.file.output(Op.grestore)
 
     def draw_path_collection(self, gc, master_transform, paths, all_transforms,
                              offsets, offsetTrans, facecolors, edgecolors,
@@ -1530,7 +1526,6 @@ class RendererPdf(RendererBase):
             offsetTrans, facecolors, edgecolors, linewidths, linestyles,
             antialiaseds, urls, offset_position):
 
-            self.check_gc(gc0, rgbFace)
             dx, dy = xo - lastx, yo - lasty
             output(1, 0, 0, 1, dx, dy, Op.concat_matrix, path_id, Op.use_xobject)
             lastx, lasty = xo, yo
@@ -1544,7 +1539,6 @@ class RendererPdf(RendererBase):
                                       path, trans, rgbFace)
             return
 
-        self.check_gc(gc, rgbFace)
         fillp = gc.fillp()
         strokep = gc.strokep()
 
@@ -1582,7 +1576,6 @@ class RendererPdf(RendererBase):
         tpoints = trans.transform(points)
         tpoints = tpoints.reshape(shape)
         name = self.file.addGouraudTriangles(tpoints, colors)
-        self.check_gc(gc)
         self.file.output(name, Op.shading)
 
     def _setup_textpos(self, x, y, descent, angle, oldx=0, oldy=0, olddescent=0, oldangle=0):
@@ -1612,7 +1605,6 @@ class RendererPdf(RendererBase):
         self.file.output(cos(a), sin(a), -sin(a), cos(a), x, y,
                          Op.concat_matrix)
 
-        self.check_gc(gc, gc._rgb)
         self.file.output(Op.begin_text)
         prev_font = None, None
         oldx, oldy = 0, 0
@@ -1717,7 +1709,6 @@ class RendererPdf(RendererBase):
         mytrans = Affine2D().rotate_deg(angle).translate(x, y)
 
         # Output the text.
-        self.check_gc(gc, gc._rgb)
         self.file.output(Op.begin_text)
         curx, cury, oldx, oldy = 0, 0, 0, 0
         for elt in seq:
@@ -1766,7 +1757,6 @@ class RendererPdf(RendererBase):
         # this complication is avoided, but of course, those fonts can
         # not be subsetted.
 
-        self.check_gc(gc, gc._rgb)
         if ismath: return self.draw_mathtext(gc, x, y, s, prop, angle)
 
         fontsize = prop.get_size_in_points()
@@ -1963,22 +1953,18 @@ class RendererPdf(RendererBase):
         return self.file.width / 72.0, self.file.height / 72.0
 
     def new_gc(self):
-        return GraphicsContextPdf(self.file)
-
+        self.file.output(Op.gsave)
+        return self.gc
 
 class GraphicsContextPdf(GraphicsContextBase):
 
     def __init__(self, file):
         GraphicsContextBase.__init__(self)
-        self._fillcolor = (0.0, 0.0, 0.0)
+        self._fillcolor = None
         self.file = file
-        self.parent = None
 
-    def __repr__(self):
-        d = dict(self.__dict__)
-        del d['file']
-        del d['parent']
-        return repr(d)
+    def restore(self):
+        self.file.output(Op.grestore)
 
     def strokep(self):
         """
@@ -2016,27 +2002,30 @@ class GraphicsContextPdf(GraphicsContextBase):
     capstyles = { 'butt': 0, 'round': 1, 'projecting': 2 }
     joinstyles = { 'miter': 0, 'round': 1, 'bevel': 2 }
 
-    def capstyle_cmd(self, style):
-        return [self.capstyles[style], Op.setlinecap]
+    def set_capstyle(self, style):
+        GraphicsContextBase.set_capstyle(self, style)
+        self.file.output(self.capstyles[style], Op.setlinecap)
 
-    def joinstyle_cmd(self, style):
-        return [self.joinstyles[style], Op.setlinejoin]
+    def set_joinstyle(self, style):
+        GraphicsContextBase.set_joinstyle(self, style)
+        self.file.output(self.joinstyles[style], Op.setlinejoin)
 
-    def linewidth_cmd(self, width):
-        return [width, Op.setlinewidth]
+    def set_linewidth(self, width):
+        GraphicsContextBase.set_linewidth(self, width)
+        self.file.output(width, Op.setlinewidth)
 
-    def dash_cmd(self, dashes):
-        offset, dash = dashes
-        if dash is None:
-            dash = []
-            offset = 0
-        return [list(dash), offset, Op.setdash]
+    def set_dashes(self, offset, dashes):
+        GraphicsContextBase.set_dashes(self, offset, dashes)
+        if offset is None: offset = 0
+        if dashes is not None:
+            self.file.output(list(dashes), offset, Op.setdash)
 
-    def alpha_cmd(self, alpha):
+    def set_alpha(self, alpha):
+        GraphicsContextBase.set_alpha(self, alpha)
         name = self.file.alphaState(alpha)
-        return [name, Op.setgstate]
+        self.file.output(name, Op.setgstate)
 
-    def hatch_cmd(self, hatch):
+    def hatch_cmd(self, hatch): # XXX
         if not hatch:
             if self._fillcolor is not None:
                 return self.fillcolor_cmd(self._fillcolor)
@@ -2048,110 +2037,43 @@ class GraphicsContextPdf(GraphicsContextBase):
             return [Name('Pattern'), Op.setcolorspace_nonstroke,
                     name, Op.setcolor_nonstroke]
 
-    def rgb_cmd(self, rgb):
-        if rcParams['pdf.inheritcolor']:
-            return []
-        if rgb[0] == rgb[1] == rgb[2]:
-            return [rgb[0], Op.setgray_stroke]
-        else:
-            return list(rgb[:3]) + [Op.setrgb_stroke]
+    def set_clip_rectangle(self, cliprect):
+        if cliprect is not None:
+            GraphicsContextBase.set_clip_rectangle(self, cliprect)
+            self.file.output(*cliprect.bounds)
+            self.file.output(Op.rectangle, Op.clip, Op.endpath)
 
-    def fillcolor_cmd(self, rgb):
+    def set_clip_path(self, clippath):
+        if clippath is not None:
+            GraphicsContextBase.set_clip_path(self, clippath)
+            path, affine = clippath.get_transformed_path_and_affine()
+            self.file.output(*PdfFile.pathOperations(path, affine, simplify=False))
+            self.file.output(Op.clip, Op.endpath)
+
+    def set_foreground(self, fg, isRGB=False):
+        GraphicsContextBase.set_foreground(self, fg, isRGB)
+        self.emit_rgb()
+
+    def set_graylevel(self, frac):
+        GraphicsContextBase.set_graylevel(self, frac)
+        self.emit_rgb()
+
+    def emit_rgb(self):
+        #if rcParams['pdf.inheritcolor']:
+        #    return
+        rgb = self._rgb
+        if rgb[0] == rgb[1] == rgb[2]:
+            self.file.output(rgb[0], Op.setgray_stroke)
+        else:
+            self.file.output(rgb[0], rgb[1], rgb[2], Op.setrgb_stroke)
+
+    def fillcolor_cmd(self, rgb): # XXX
         if rgb is None or rcParams['pdf.inheritcolor']:
             return []
         elif rgb[0] == rgb[1] == rgb[2]:
             return [rgb[0], Op.setgray_nonstroke]
         else:
             return list(rgb[:3]) + [Op.setrgb_nonstroke]
-
-    def push(self):
-        parent = GraphicsContextPdf(self.file)
-        parent.copy_properties(self)
-        parent.parent = self.parent
-        self.parent = parent
-        return [Op.gsave]
-
-    def pop(self):
-        assert self.parent is not None
-        self.copy_properties(self.parent)
-        self.parent = self.parent.parent
-        return [Op.grestore]
-
-    def clip_cmd(self, cliprect, clippath):
-        """Set clip rectangle. Calls self.pop() and self.push()."""
-        cmds = []
-        # Pop graphics state until we hit the right one or the stack is empty
-        while (self._cliprect, self._clippath) != (cliprect, clippath) \
-                and self.parent is not None:
-            cmds.extend(self.pop())
-        # Unless we hit the right one, set the clip polygon
-        if (self._cliprect, self._clippath) != (cliprect, clippath):
-            cmds.extend(self.push())
-            if self._cliprect != cliprect:
-                cmds.extend([cliprect, Op.rectangle, Op.clip, Op.endpath])
-            if self._clippath != clippath:
-                path, affine = clippath.get_transformed_path_and_affine()
-                cmds.extend(
-                    PdfFile.pathOperations(path, affine, simplify=False) +
-                    [Op.clip, Op.endpath])
-        return cmds
-
-    commands = (
-        (('_cliprect', '_clippath'), clip_cmd), # must come first since may pop
-        (('_alpha',), alpha_cmd),
-        (('_capstyle',), capstyle_cmd),
-        (('_fillcolor',), fillcolor_cmd),
-        (('_joinstyle',), joinstyle_cmd),
-        (('_linewidth',), linewidth_cmd),
-        (('_dashes',), dash_cmd),
-        (('_rgb',), rgb_cmd),
-        (('_hatch',), hatch_cmd),  # must come after fillcolor and rgb
-        )
-
-    # TODO: _linestyle
-
-    def delta(self, other):
-        """
-        Copy properties of other into self and return PDF commands
-        needed to transform self into other.
-        """
-        cmds = []
-        for params, cmd in self.commands:
-            different = False
-            for p in params:
-                ours = getattr(self, p)
-                theirs = getattr(other, p)
-                try:
-                    different = bool(ours != theirs)
-                except ValueError:
-                    ours = np.asarray(ours)
-                    theirs = np.asarray(theirs)
-                    different = ours.shape != theirs.shape or np.any(ours != theirs)
-                if different:
-                    break
-
-            if different:
-                theirs = [getattr(other, p) for p in params]
-                cmds.extend(cmd(self, *theirs))
-                for p in params:
-                    setattr(self, p, getattr(other, p))
-        return cmds
-
-    def copy_properties(self, other):
-        """
-        Copy properties of other into self.
-        """
-        GraphicsContextBase.copy_properties(self, other)
-        self._fillcolor = other._fillcolor
-
-    def finalize(self):
-        """
-        Make sure every pushed graphics state is popped.
-        """
-        cmds = []
-        while self.parent is not None:
-            cmds.extend(self.pop())
-        return cmds
 
 ########################################################################
 #
@@ -2274,7 +2196,6 @@ class FigureCanvasPdf(FigureCanvasBase):
                                          width, height, image_dpi, RendererPdf(file, image_dpi),
                                          bbox_inches_restore=_bbox_inches_restore)
             self.figure.draw(renderer)
-            renderer.finalize()
         finally:
             if isinstance(filename, PdfPages): # finish off this page
                 file.endStream()
