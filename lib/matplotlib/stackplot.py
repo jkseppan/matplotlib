@@ -47,6 +47,8 @@ def stackplot(axes, x, *args, **kwargs):
 
     # Assume data passed has not been 'stacked', so stack it here.
     y_stack = np.cumsum(y, axis=0)
+    matplotlib.verbose.report('stackplot: y=%s, y_stack=%s' % (y, y_stack),
+                              'debug-annoying')
 
     r = []
 
