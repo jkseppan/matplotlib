@@ -919,10 +919,6 @@ class Bbox(BboxBase):
         if len(xy) == 0:
             return
 
-        _, y0 = xy[0]
-        if -2.5e-18 < y0 < -2e-18:
-            1/0
-
         path = Path(xy)
         self.update_from_path(path, ignore=ignore,
                                     updatex=updatex, updatey=updatey)
