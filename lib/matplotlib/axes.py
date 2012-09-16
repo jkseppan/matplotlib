@@ -1952,22 +1952,29 @@ class Axes(martist.Artist):
             self.set_xbound(x0, x1)
 
         if scaley and self._autoscaleYon:
+            debug = lambda s: verbose.report(s, 'debug-annoying')
             yshared = self._shared_y_axes.get_siblings(self)
             dl = [ax.dataLim for ax in yshared]
+            debug('dl=%s' % dl)
             bb = mtransforms.BboxBase.union(dl)
             y0, y1 = bb.intervaly
+            debug('bb.intervaly -> y0=%s, y1=%s' % (y0, y1))
             ylocator = self.yaxis.get_major_locator()
             try:
                 y0, y1 = ylocator.nonsingular(y0, y1)
+                debug('ylocator.nonsingular -> y0=%s, y1=%s' % (y0, y1))
             except AttributeError:
                 y0, y1 = mtransforms.nonsingular(y0, y1, increasing=False,
                                                          expander=0.05)
+                debug('mtransforms.nonsingular -> y0=%s, y1=%s' % (y0, y1))
             if self._ymargin > 0:
                 delta = (y1 - y0) * self._ymargin
                 y0 -= delta
                 y1 += delta
+                debug('ymargin -> y0=%s, y1=%s' % (y0, y1))
             if not _tight:
                 y0, y1 = ylocator.view_limits(y0, y1)
+                debug('ylocator.view_limits -> y0=%s, y1=%s' % (y0, y1))
             verbose.report('autoscale_view: y0=%s y1=%s' % (y0, y1),
                            'debug-annoying')
             self.set_ybound(y0, y1)
