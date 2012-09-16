@@ -9,6 +9,8 @@ from numpy import ma
 import matplotlib
 rcParams = matplotlib.rcParams
 
+from matplotlib import verbose
+
 import matplotlib.artist as martist
 from matplotlib.artist import allow_rasterization
 import matplotlib.axis as maxis
@@ -1888,6 +1890,8 @@ class Axes(martist.Artist):
 
         Returns None.
         """
+        verbose.report('autoscale enable=%s axis=%s tight=%s' % (enable, axis, tight),
+                       'debug-annoying')
         if enable is None:
             scalex = True
             scaley = True
@@ -1943,6 +1947,8 @@ class Axes(martist.Artist):
                 x1 += delta
             if not _tight:
                 x0, x1 = xlocator.view_limits(x0, x1)
+            verbose.report('autoscale_view: x0=%s x1=%s' % (x0, x1),
+                           'debug-annoying')
             self.set_xbound(x0, x1)
 
         if scaley and self._autoscaleYon:
@@ -1962,6 +1968,8 @@ class Axes(martist.Artist):
                 y1 += delta
             if not _tight:
                 y0, y1 = ylocator.view_limits(y0, y1)
+            verbose.report('autoscale_view: y0=%s y1=%s' % (y0, y1),
+                           'debug-annoying')
             self.set_ybound(y0, y1)
 
     #### Drawing
@@ -3971,7 +3979,7 @@ class Axes(martist.Artist):
 
             plot(x, y, color='green', linestyle='dashed', marker='o',
                  markerfacecolor='blue', markersize=12).
-                 
+
         See :class:`~matplotlib.lines.Line2D` for details.
 
         The kwargs are :class:`~matplotlib.lines.Line2D` properties:
@@ -7072,7 +7080,7 @@ class Axes(martist.Artist):
         **Example:**
 
         .. plot:: mpl_examples/pylab_examples/image_demo.py
-        
+
         """
 
         if not self._hold: self.cla()

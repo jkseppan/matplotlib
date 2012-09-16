@@ -1,10 +1,7 @@
 language: python
 
 python:
-  - 2.6
   - 2.7
-  - 3.1
-  - 3.2
 
 install:
   - pip install --use-mirrors nose numpy
@@ -14,4 +11,4 @@ install:
 script:
   - mkdir ../foo
   - cd ../foo
-  - python ../matplotlib/tests.py
+  - python ../matplotlib/tests.py matplotlib.tests.test_axes:test_stackplot

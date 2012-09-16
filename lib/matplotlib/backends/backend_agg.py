@@ -263,7 +263,7 @@ class RendererAgg(RendererBase):
         convert point measures to pixes using dpi and the pixels per
         inch of the display
         """
-        if __debug__: verbose.report('RendererAgg.points_to_pixels',
+        if __debug__: verbose.report('RendererAgg.points_to_pixels %s' % points,
                                      'debug-annoying')
         return points*self.dpi/72.0
 

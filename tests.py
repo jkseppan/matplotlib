@@ -9,6 +9,7 @@ import os
 
 import matplotlib
 matplotlib.use('agg')
+matplotlib.verbose.set_level('debug-annoying')
 
 import nose
 from matplotlib.testing.noseclasses import KnownFailure
