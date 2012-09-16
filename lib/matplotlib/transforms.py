@@ -44,6 +44,7 @@ except NameError:
     from sets import Set as set
 
 from path import Path
+from matplotlib import verbose
 
 DEBUG = False
 
@@ -234,6 +235,13 @@ class TransformNode(object):
             recurse(self)
             fobj.write("}\n")
 
+def trace(method):
+    def wrapper(*args, **kwargs):
+        result = method(*args, **kwargs)
+        verbose.report('%x %s(%s, **%s) => %s' % (id(args[0]), method.func_name, args[1:], kwargs, result),
+                       'debug-annoying')
+        return result
+    return wrapper
 
 class BboxBase(TransformNode):
     """
@@ -264,6 +272,7 @@ class BboxBase(TransformNode):
                 warnings.warn("Singular Bbox.")
         _check = staticmethod(_check)
 
+    @trace
     def frozen(self):
         return Bbox(self.get_points().copy())
     frozen.__doc__ = TransformNode.__doc__
@@ -271,6 +280,7 @@ class BboxBase(TransformNode):
     def __array__(self, *args, **kwargs):
         return self.get_points()
 
+    @trace
     def is_unit(self):
         """
         Returns True if the :class:`Bbox` is the unit bounding box
@@ -403,6 +413,7 @@ class BboxBase(TransformNode):
     def get_points(self):
         return NotImplementedError()
 
+    @trace
     def containsx(self, x):
         """
         Returns True if *x* is between or equal to :attr:`x0` and
@@ -413,6 +424,7 @@ class BboxBase(TransformNode):
                  and (x >= x0 and x <= x1))
                 or (x >= x1 and x <= x0))
 
+    @trace
     def containsy(self, y):
         """
         Returns True if *y* is between or equal to :attr:`y0` and
@@ -423,6 +435,7 @@ class BboxBase(TransformNode):
                  and (y >= y0 and y <= y1))
                 or (y >= y1 and y <= y0))
 
+    @trace
     def contains(self, x, y):
         """
         Returns *True* if (*x*, *y*) is a coordinate inside the
@@ -430,6 +443,7 @@ class BboxBase(TransformNode):
         """
         return self.containsx(x) and self.containsy(y)
 
+    @trace
     def overlaps(self, other):
         """
         Returns True if this bounding box overlaps with the given
@@ -452,6 +466,7 @@ class BboxBase(TransformNode):
                     (bx1 > ax2) or
                     (by1 > ay2))
 
+    @trace
     def fully_containsx(self, x):
         """
         Returns True if *x* is between but not equal to :attr:`x0` and
@@ -462,6 +477,7 @@ class BboxBase(TransformNode):
                  and (x > x0 and x < x1))
                 or (x > x1 and x < x0))
 
+    @trace
     def fully_containsy(self, y):
         """
         Returns True if *y* is between but not equal to :attr:`y0` and
@@ -472,6 +488,7 @@ class BboxBase(TransformNode):
                  and (x > y0 and x < y1))
                 or (x > y1 and x < y0))
 
+    @trace
     def fully_contains(self, x, y):
         """
         Returns True if (*x*, *y*) is a coordinate inside the bounding
@@ -480,6 +497,7 @@ class BboxBase(TransformNode):
         return self.fully_containsx(x) \
             and self.fully_containsy(y)
 
+    @trace
     def fully_overlaps(self, other):
         """
         Returns True if this bounding box overlaps with the given
@@ -502,6 +520,7 @@ class BboxBase(TransformNode):
                     (bx1 >= ax2) or
                     (by1 >= ay2))
 
+    @trace
     def transformed(self, transform):
         """
         Return a new :class:`Bbox` object, statically transformed by
@@ -509,6 +528,7 @@ class BboxBase(TransformNode):
         """
         return Bbox(transform.transform(self.get_points()))
 
+    @trace
     def inverse_transformed(self, transform):
         """
         Return a new :class:`Bbox` object, statically transformed by
@@ -525,6 +545,7 @@ class BboxBase(TransformNode):
              'N':  (0.5, 1.0),
              'NW': (0, 1.0),
              'W':  (0, 0.5)}
+    @trace
     def anchored(self, c, container = None):
         """
         Return a copy of the :class:`Bbox`, shifted to position *c*
@@ -558,6 +579,7 @@ class BboxBase(TransformNode):
                     [(l + cx * (w-W)) - L,
                      (b + cy * (h-H)) - B])
 
+    @trace
     def shrunk(self, mx, my):
         """
         Return a copy of the :class:`Bbox`, shrunk by the factor *mx*
@@ -569,6 +591,7 @@ class BboxBase(TransformNode):
         return Bbox([self._points[0],
                     self._points[0] + [mx * w, my * h]])
 
+    @trace
     def shrunk_to_aspect(self, box_aspect, container = None, fig_aspect = 1.0):
         """
         Return a copy of the :class:`Bbox`, shrunk so that it is as
@@ -592,6 +615,7 @@ class BboxBase(TransformNode):
         return Bbox([self._points[0],
                      self._points[0] + (W, H)])
 
+    @trace
     def splitx(self, *args):
         """
         e.g., ``bbox.splitx(f1, f2, ...)``
@@ -608,6 +632,7 @@ class BboxBase(TransformNode):
             boxes.append(Bbox([[x0 + xf0 * w, y0], [x0 + xf1 * w, y1]]))
         return boxes
 
+    @trace
     def splity(self, *args):
         """
         e.g., ``bbox.splitx(f1, f2, ...)``
@@ -624,6 +649,7 @@ class BboxBase(TransformNode):
             boxes.append(Bbox([[x0, y0 + yf0 * h], [x1, y0 + yf1 * h]]))
         return boxes
 
+    @trace
     def count_contains(self, vertices):
         """
         Count the number of vertices contained in the :class:`Bbox`.
@@ -641,6 +667,7 @@ class BboxBase(TransformNode):
         inside = (abs(dx0 + dx1) + abs(dy0 + dy1)) <= 2
         return np.sum(inside)
 
+    @trace
     def count_overlaps(self, bboxes):
         """
         Count the number of bounding boxes that overlap this one.
@@ -649,6 +676,7 @@ class BboxBase(TransformNode):
         """
         return count_bboxes_overlapping_bbox(self, bboxes)
 
+    @trace
     def expanded(self, sw, sh):
         """
         Return a new :class:`Bbox` which is this :class:`Bbox`
@@ -662,6 +690,7 @@ class BboxBase(TransformNode):
         a = np.array([[-deltaw, -deltah], [deltaw, deltah]])
         return Bbox(self._points + a)
 
+    @trace
     def padded(self, p):
         """
         Return a new :class:`Bbox` that is padded on all four sides by
@@ -670,6 +699,7 @@ class BboxBase(TransformNode):
         points = self.get_points()
         return Bbox(points + [[-p, -p], [p, p]])
 
+    @trace
     def translated(self, tx, ty):
         """
         Return a copy of the :class:`Bbox`, statically translated by
@@ -677,6 +707,7 @@ class BboxBase(TransformNode):
         """
         return Bbox(self._points + (tx, ty))
 
+    @trace
     def corners(self):
         """
         Return an array of points which are the four corners of this
@@ -687,6 +718,7 @@ class BboxBase(TransformNode):
         l, b, r, t = self.get_points().flatten()
         return np.array([[l, b], [l, t], [r, b], [r, t]])
 
+    @trace
     def rotated(self, radians):
         """
         Return a new bounding box that bounds a rotated version of
@@ -790,6 +822,7 @@ class Bbox(BboxBase):
     def __repr__(self):
         return 'Bbox(%r)' % repr(self._points)
 
+    @trace
     def ignore(self, value):
         """
         Set whether the existing bounds of the box should be ignored
@@ -806,6 +839,7 @@ class Bbox(BboxBase):
         """
         self._ignore = value
 
+    @trace
     def update_from_data(self, x, y, ignore=None):
         """
         Update the bounds of the :class:`Bbox` based on the passed in
@@ -826,6 +860,7 @@ class Bbox(BboxBase):
         xy = np.hstack((x.reshape((len(x), 1)), y.reshape((len(y), 1))))
         return self.update_from_data_xy(xy, ignore)
 
+    @trace
     def update_from_path(self, path, ignore=None, updatex=True, updatey=True):
         """
         Update the bounds of the :class:`Bbox` based on the passed in
@@ -863,6 +898,7 @@ class Bbox(BboxBase):
                 self._minpos[1] = minpos[1]
 
 
+    @trace
     def update_from_data_xy(self, xy, ignore=None, updatex=True, updatey=True):
         """
         Update the bounds of the :class:`Bbox` based on the passed in
@@ -955,6 +991,7 @@ class Bbox(BboxBase):
         self._invalid = 0
         return self._points
 
+    @trace
     def set_points(self, points):
         """
         Set the points of the bounding box directly from a numpy array
@@ -965,6 +1002,7 @@ class Bbox(BboxBase):
             self._points = points
             self.invalidate()
 
+    @trace
     def set(self, other):
         """
         Set this bounding box from the "frozen" bounds of another
@@ -974,14 +1012,17 @@ class Bbox(BboxBase):
             self._points = other.get_points()
             self.invalidate()
 
+    @trace
     def mutated(self):
         'return whether the bbox has changed since init'
         return self.mutatedx() or self.mutatedy()
 
+    @trace
     def mutatedx(self):
         'return whether the x-limits have changed since init'
         return (self._points[0,0]!=self._points_orig[0,0] or
                 self._points[1,0]!=self._points_orig[1,0])
+    @trace
     def mutatedy(self):
         'return whether the y-limits have changed since init'
         return (self._points[0,1]!=self._points_orig[0,1] or

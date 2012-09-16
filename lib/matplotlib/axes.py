@@ -1956,6 +1956,8 @@ class Axes(martist.Artist):
             yshared = self._shared_y_axes.get_siblings(self)
             dl = [ax.dataLim for ax in yshared]
             debug('dl=%s' % dl)
+            for datalim in dl:
+                debug('id=%x' % id(datalim))
             bb = mtransforms.BboxBase.union(dl)
             y0, y1 = bb.intervaly
             debug('bb.intervaly -> y0=%s, y1=%s' % (y0, y1))
