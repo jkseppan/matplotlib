@@ -6781,6 +6781,9 @@ class Axes(martist.Artist):
                 for filling between two sets of x-values
 
         """
+        debug = lambda s: verbose.report(s, 'debug-annoying')
+        debug('fill_between(x=%s, y1=%s, y2=%s, where=%s, interpolate=%s, **%s)' % \
+                  (x, y1, y2, where, interpolate, kwargs))
         # Handle united data, such as dates
         self._process_unit_info(xdata=x, ydata=y1, kwargs=kwargs)
         self._process_unit_info(ydata=y2)
@@ -6809,9 +6812,11 @@ class Axes(martist.Artist):
 
         polys = []
         for ind0, ind1 in mlab.contiguous_regions(where):
+            debug('ind0=%s, ind1=%s' % (ind0, ind1))
             xslice = x[ind0:ind1]
             y1slice = y1[ind0:ind1]
             y2slice = y2[ind0:ind1]
+            debug('xslice=%s, y1slice=%s, y2slice=%s' % (xslice, y1slice, y2slice))
 
             if not len(xslice):
                 continue
@@ -6854,6 +6859,7 @@ class Axes(martist.Artist):
             X[1:N+1,1] = y1slice
             X[N+2:,0] = xslice[::-1]
             X[N+2:,1] = y2slice[::-1]
+            debug('X=%s' % X)
 
             polys.append(X)
 
