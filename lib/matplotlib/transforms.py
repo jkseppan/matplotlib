@@ -780,6 +780,8 @@ class Bbox(BboxBase):
         # support the mutated methods
         self._points_orig = self._points.copy()
         verbose.report('%x %s' % (id(self), self))
+        if -2.5e-18 < self._points[0,1] < -2.0e-18:
+            1/0
 
     if DEBUG:
         ___init__ = __init__
