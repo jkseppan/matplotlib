@@ -6867,7 +6867,9 @@ class Axes(martist.Artist):
 
         # now update the datalim and autoscale
         XY1 = np.array([x[where], y1[where]]).T
+        debug('XY1=%s' % XY1)
         XY2 = np.array([x[where], y2[where]]).T
+        debug('XY2=%s' % XY2)
         self.dataLim.update_from_data_xy(XY1, self.ignore_existing_data_limits,
                                          updatex=True, updatey=True)
         self.dataLim.update_from_data_xy(XY2, self.ignore_existing_data_limits,

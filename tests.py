@@ -14,6 +14,29 @@ matplotlib.verbose.set_level('debug-annoying')
 import nose
 from matplotlib.testing.noseclasses import KnownFailure
 from matplotlib import default_test_modules
+from matplotlib.transforms import *
+from numpy import *
+
+def test_transforms():
+
+
+    idt = IdentityTransform()
+    print 'idt', idt
+    bl_idt = TransformWrapper(BlendedAffine2D(idt,idt))
+    print 'bl_idt', bl_idt
+    eighty = Affine2D(array([[80., 0., 0.], [0., 80., 0.], [0., 0., 1.]]))
+    print 'eighty', eighty
+    bb = lambda x: Bbox(array(x))
+    tbb = lambda x, y: TransformedBbox(bb(x), y)
+    tbbfrom = tbb([[0.,0.],[1.,1.]], bl_idt)
+    print 'tbbfrom', tbbfrom
+    tbbto = tbb([[0.125, 0.1], [0.9, 0.9]], BboxTransformTo(tbb([[0., 0.], [8., 6.]], eighty)))
+    print 'tbbto', tbbto
+    cgt = CompositeGenericTransform
+    bboxt = cgt(bl_idt, cgt(BboxTransformFrom(tbbfrom), BboxTransformTo(tbbto)))
+    print 'bboxt', bboxt
+    points_inverted = bboxt.inverted().transform([[0.,0.],[10.,10.]])
+    print 'points_inverted', points_inverted
 
 
 def run():
@@ -53,4 +76,6 @@ def run():
         raise
 
 if __name__ == '__main__':
+    test_transforms()
     run()
+

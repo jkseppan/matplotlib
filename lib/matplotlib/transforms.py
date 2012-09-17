@@ -779,6 +779,8 @@ class Bbox(BboxBase):
         # default or has been mutated; we store the orig points to
         # support the mutated methods
         self._points_orig = self._points.copy()
+        verbose.report('%x %s' % (id(self), self))
+
     if DEBUG:
         ___init__ = __init__
         def __init__(self, points, **kwargs):
