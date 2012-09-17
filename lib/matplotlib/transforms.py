@@ -1671,16 +1671,34 @@ class Affine2DBase(AffineBase):
     transform_affine.__doc__ = AffineBase.transform_affine.__doc__
 
     def inverted(self):
-        if self._inverted is None or self._invalid:
-            mtx = self.get_matrix()
-            shorthand_name = None
-            if self._shorthand_name:
-                shorthand_name = '(%s)-1' % self._shorthand_name
-            self._inverted = Affine2D(inv(mtx), shorthand_name=shorthand_name)
-            self._invalid = 0
-        return self._inverted
+        return InverseAffine2D(self)
     inverted.__doc__ = AffineBase.inverted.__doc__
 
+class InverseAffine2D(Affine2DBase):
+    def __init__(self, child):
+        assert isinstance(child, Affine2DBase)
+        Affine2DBase.__init__(self)
+        self._child = child
+
+    def __str__(self):
+        return '(%s)-1' % str(self._child)
+
+    def inverted(self):
+        return self._child
+
+    def get_matrix(self):
+        return np.linalg.inv(self._child.get_matrix())
+
+    def transform_affine(self, points):
+        mtx = self._child.get_matrix()
+        if isinstance(points, MaskedArray):
+            tpoints = np.linalg.solve(mtx, points.data.T).T
+            return ma.MaskedArray(tpoints, mask=ma.getmask(points))
+        return np.linalg.solve(mtx, points.T).T
+
+    def transform_point(self, point):
+        mtx = self._child.get_matrix()
+        return np.linalg.solve(mtx, point)
 
 class Affine2D(Affine2DBase):
     """
