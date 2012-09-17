@@ -18,8 +18,6 @@ from matplotlib.transforms import *
 from numpy import *
 
 def test_transforms():
-
-
     idt = IdentityTransform()
     print 'idt', idt
     bl_idt = TransformWrapper(BlendedAffine2D(idt,idt))
@@ -35,7 +33,7 @@ def test_transforms():
     cgt = CompositeGenericTransform
     bboxt = cgt(bl_idt, cgt(BboxTransformFrom(tbbfrom), BboxTransformTo(tbbto)))
     print 'bboxt', bboxt
-    points_inverted = bboxt.inverted().transform([[0.,0.],[10.,10.]])
+    points_inverted = bboxt.inverted().transform([[80.,48.],[5040.,3888.]])
     print 'points_inverted', points_inverted
 
 
