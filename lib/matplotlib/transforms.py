@@ -534,7 +534,14 @@ class BboxBase(TransformNode):
         Return a new :class:`Bbox` object, statically transformed by
         the inverse of the given transform.
         """
-        return Bbox(transform.inverted().transform(self.get_points()))
+        try:
+            return Bbox(transform.inverted().transform(self.get_points()))
+        except ZeroDivisionError:
+            print('points', self.get_points())
+            print('transform', transform)
+            print('inverted', transform.inverted())
+            print('result', transform.inverted().transform(self.get_points()))
+            raise
 
     coefs = {'C':  (0.5, 0.5),
              'SW': (0,0),
