@@ -2108,6 +2108,16 @@ class BlendedAffine2D(Affine2DBase):
         return self._mtx
     get_matrix.__doc__ = Affine2DBase.get_matrix.__doc__
 
+    def inverted(self):
+        if self._inverted is None or self._invalid:
+            mtx = self.get_matrix()
+            shorthand_name = None
+            if self._x == self._y:
+                self._inverted = self._x.inverted()
+            else:
+                self._inverted = Affine2D(inv(mtx))
+        return self._inverted
+
 
 def blended_transform_factory(x_transform, y_transform):
     """
