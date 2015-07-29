@@ -123,6 +123,8 @@ from matplotlib.compat import subprocess
 from matplotlib.rcsetup import (defaultParams,
                                 validate_backend)
 
+from collections import Hashable
+import numbers
 import numpy
 from matplotlib.externals.six.moves.urllib.request import urlopen
 from matplotlib.externals.six.moves import reload_module as reload
@@ -1517,15 +1519,11 @@ test.__test__ = False  # nose: this function is not a test
 
 
 def _replacer(data, key):
-    # if key isn't a string don't bother
-    if not isinstance(key, six.string_types):
+    # don't bother if key is a number or array, or not a possible hash key
+    if isinstance(key, (numbers.Number, numpy.ndarray)) or not isinstance(key, Hashable):
         return key
-    # try to use __getitem__
-    try:
-        return data[key]
-    # key does not exist, silently fall back to key
-    except KeyError:
-        return key
+    # try to use __getitem__, otherwise fall back to key
+    return data.get(key, key)
 
 
 def unpack_labeled_data(wl_args=None, wl_kwargs=None, label_pos=None):
