@@ -1547,7 +1547,10 @@ def unpack_labeled_data(wl_args=None, wl_kwargs=None, label_pos=None):
         @functools.wraps(func)
         def inner(ax, *args, **kwargs):
             data = kwargs.pop('data', None)
-            if data is not None:
+            if data is None:
+                new_args = args
+                new_kwargs = kwargs
+            else:
                 if wl_args is None:
                     new_args = tuple(_replacer(data, a) for a in args)
                 else:
