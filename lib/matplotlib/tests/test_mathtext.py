@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib import mathtext
 
 math_tests = [
-    r'$a+b+\dot s+\dot{s}+\ldots$',
+    r'$b+\dot s+\dot{s}+\ldots$',
     r'$x \doteq y$',
     r'\$100.00 $\alpha \_$',
     r'$\frac{\$100.00}{y}$',
@@ -21,7 +21,7 @@ math_tests = [
     r'$100\%y\ x*y\ x/y x\$y$',
     r'$x\leftarrow y\ x\forall y\ x-y$',
     r'$x \sf x \bf x {\cal X} \rm x$',
-    r'$x\ x\,x\;x\quad x\qquad x\!x\hspace{ 0.5 }y$',
+    r'$y\ y\,y\;y\quad y\qquad y\!y\hspace{ 0.5 }y$',
     r'$\{ \rm braces \}$',
     r'$\left[\left\lfloor\frac{5}{\frac{\left(3\right)}{4}} y\right)\right]$',
     r'$\left(x\right)$',
@@ -36,7 +36,7 @@ math_tests = [
     r'Foo: $\alpha_{i+1}^j = {\rm sin}(2\pi f_j t_i) e^{-5 t_i/\tau}$',
     r'$\mathcal{R}\prod_{i=\alpha_{i+1}}^\infty a_i \sin(2 \pi f x_i)$',
     r'Variable $i$ is good',
-    r'$\Delta_i^j$',
+    r'$\Delta_x^y$',
     r'$\Delta^j_{i+1}$',
     r'$\ddot{o}\acute{e}\grave{e}\hat{O}\breve{\imath}\tilde{n}\vec{q}$',
     r"$\arccos((x^i))$",
