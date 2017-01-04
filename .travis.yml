@@ -9,7 +9,6 @@ addons:
   artifacts:
     paths:
     - result_images.tar.bz2
-    debug: true
   apt:
     packages:
     - inkscape
@@ -149,9 +148,7 @@ script:
 after_failure:
 - |
   if [[ $BUILD_DOCS == false && $TRAVIS_PULL_REQUEST == false && $TRAVIS_REPO_SLUG == 'jkseppan/matplotlib' ]]; then
-    gem install travis-artifacts
     tar cjf result_images.tar.bz2 result_images
-    echo https://s3.amazonaws.com/${ARTIFACTS_BUCKET}/${TRAVIS_BUILD_NUMBER}/${TRAVIS_JOB_NUMBER}/result_images.tar.bz2
   else
     echo "The result images will only be uploaded if they are on the matplotlib/matplotlib repo - this is for security reasons to prevent arbitrary PRs echoing security details."
   fi
