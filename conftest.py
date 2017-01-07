@@ -10,6 +10,7 @@ import matplotlib
 matplotlib.use('agg')
 
 from matplotlib import default_test_modules
+from matplotlib.testing import conversion_cache as ccache
 
 
 IGNORED_TESTS = {
@@ -62,6 +63,11 @@ def pytest_addoption(parser):
 
     group.addoption('--no-pep8', action='store_true',
                     help='skip PEP8 compliance tests')
+    group.addoption("--conversion-cache-max-size", action="store",
+                    help="conversion cache maximum size in bytes")
+    group.addoption("--conversion-cache-report-misses",
+                    action="store_true",
+                    help="report conversion cache misses")
 
 
 def pytest_configure(config):
@@ -71,10 +77,28 @@ def pytest_configure(config):
     if config.getoption('--no-pep8'):
         default_test_modules.remove('matplotlib.tests.test_coding_standards')
         IGNORED_TESTS['matplotlib'] += 'test_coding_standards'
+    max_size = config.getoption('--conversion-cache-max-size')
+    if max_size is not None:
+        ccache.conversion_cache = \
+            ccache.ConversionCache(max_size=int(max_size))
+    else:
+        ccache.conversion_cache = ccache.ConversionCache()
 
 
 def pytest_unconfigure(config):
+    ccache.conversion_cache.expire()
     matplotlib._called_from_pytest = False
+
+
+def pytest_terminal_summary(terminalreporter):
+    tr = terminalreporter
+    data = ccache.conversion_cache.report()
+    tr.write_sep('-', 'Image conversion cache report')
+    tr.write_line('Hit rate: %d/%d' % (len(data['hits']), len(data['gets'])))
+    if tr.config.getoption('--conversion-cache-report-misses'):
+        tr.write_line('Missed files:')
+        for filename in sorted(data['gets'].difference(data['hits'])):
+            tr.write_line('  %s' % filename)
 
 
 def pytest_ignore_collect(path, config):
