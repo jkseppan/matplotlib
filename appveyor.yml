@@ -182,6 +182,9 @@ artifacts:
     name: result_images
     type: zip
 
+cache:
+  - .matplotlib/test_cache
+    
 on_failure:
   - python visual_tests.py
   - echo zipping images after a failure...
