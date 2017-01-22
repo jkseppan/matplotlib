@@ -1,6 +1,7 @@
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
 
+from six.moves import reduce
 import inspect
 import os
 import pytest
@@ -83,6 +84,8 @@ def pytest_configure(config):
             ccache.ConversionCache(max_size=int(max_size))
     else:
         ccache.conversion_cache = ccache.ConversionCache()
+    if config.pluginmanager.hasplugin('xdist'):
+        config.pluginmanager.register(DeferPlugin())
 
 
 def pytest_unconfigure(config):
@@ -90,10 +93,22 @@ def pytest_unconfigure(config):
     matplotlib._called_from_pytest = False
 
 
+def pytest_sessionfinish(session):
+    if hasattr(session.config, 'slaveoutput'):
+        session.config.slaveoutput['cache-report'] = ccache.conversion_cache.report()
+
+
 def pytest_terminal_summary(terminalreporter):
     tr = terminalreporter
-    data = ccache.conversion_cache.report()
-    tr.write_sep('-', 'Image conversion cache report')
+    if hasattr(tr.config, 'cache_reports'):
+        reports = tr.config.cache_reports
+        data = {'hits': reduce(lambda x, y: x.union(y),
+                               (rep['hits'] for rep in reports)),
+                'gets': reduce(lambda x, y: x.union(y),
+                               (rep['gets'] for rep in reports))}
+    else:
+        data = ccache.conversion_cache.report()
+    tr.write_sep('=', 'Image conversion cache report')
     tr.write_line('Hit rate: %d/%d' % (len(data['hits']), len(data['gets'])))
     if tr.config.getoption('--conversion-cache-report-misses'):
         tr.write_line('Missed files:')
@@ -125,3 +140,10 @@ def pytest_pycollect_makeitem(collector, name, obj):
                 obj.teardown_class = obj.tearDownClass
 
             return pytest.Class(name, parent=collector)
+
+
+class DeferPlugin(object):
+    def pytest_testnodedown(self, node, error):
+        if not hasattr(node.config, 'cache_reports'):
+            node.config.cache_reports = []
+        node.config.cache_reports.append(node.slaveoutput['cache-report'])
