@@ -69,6 +69,7 @@ class ConversionCache(object):
         except:
             pass
         self.hash_cache = {}
+        print("Test conversion cache: %s" % self.cachedir)
 
     def get(self, filename, newname):
         """Query the cache.
