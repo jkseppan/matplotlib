@@ -11,7 +11,7 @@ import matplotlib
 matplotlib.use('agg')
 
 from matplotlib import default_test_modules
-from matplotlib.testing import conversion_cache as ccache
+from matplotlib.testing import _conversion_cache as ccache
 
 
 IGNORED_TESTS = {
