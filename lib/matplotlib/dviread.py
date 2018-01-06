@@ -210,6 +210,8 @@ class Dvi(object):
         self.fonts = {}
         self.state = _dvistate.pre
         self.baseline = self._get_baseline(filename)
+        fontnames = sorted(set(self._read_postamble()))
+        find_tex_files([x + '.tfm' for x in fontnames] + [x + '.vf' for x in fontnames])
 
     def _get_baseline(self, filename):
         if rcParams['text.latex.preview']:
@@ -304,6 +306,51 @@ class Dvi(object):
 
         return Page(text=text, boxes=boxes, width=(maxx-minx)*d,
                     height=(maxy_pure-miny)*d, descent=descent)
+
+    def _read_postamble(self):
+        file = self.file
+        offset = -1
+        while offset > -100:
+            file.seek(offset, 2)
+            byte = ord(file.read(1)[0])
+            if byte != 223:
+                break
+            offset -= 1
+        if offset >= -4:
+            raise ValueError("malformed dvi file: too few 223 bytes")
+        if byte != 2:
+            raise ValueError("malformed dvi file: post-postamble identification byte not 2")
+        file.seek(offset - 4, 2)
+        offset = struct.unpack('!I', file.read(4))[0]
+        file.seek(offset, 0)
+        try:
+            byte = ord(file.read(1)[0])
+        except TypeError:
+            # "ord() expected a character, but string of length 0 found"
+            raise ValueError("malformed dvi file: postamble pointer out of range")
+        if byte != 248:
+            raise ValueError("malformed dvi file: postamble not found at stated location")
+
+        fonts = []
+        file.seek(28, 1)
+        while True:
+            byte = ord(file.read(1)[0])
+            if 243 <= byte <= 246:
+                k, c, s, d, a, l = (
+                    _arg_olen1(self, byte-243),
+                    _arg(4, False, self, None),
+                    _arg(4, False, self, None),
+                    _arg(4, False, self, None),
+                    _arg(1, False, self, None),
+                    _arg(1, False, self, None))
+                fontname = file.read(a + l)[-l:].decode('ascii')
+                fonts.append(fontname)
+            elif byte == 249:
+                break
+            else:
+                raise ValueError("malformed dvi file: opcode %d in postamble" % byte)
+        file.seek(0, 0)
+        return fonts
 
     def _read(self):
         """
@@ -1000,6 +1047,57 @@ class Encoding(object):
         return re.findall(br'/([^][{}<>\s]+)', data)
 
 
+_kpsewhich_cache = {}
+
+    
+def find_tex_files(filenames):
+    """
+    Find multiple files in the texmf tree, with caching
+    """
+    if six.PY3:
+        filenames = [f.decode('utf-8', errors='replace') if isinstance(f, bytes) else f
+                     for f in filenames]
+    result = {filename: _kpsewhich_cache[filename]
+              for filename in filenames
+              if filename in _kpsewhich_cache}
+    filenames = [f for f in filenames if f not in result]
+    if not filenames:
+        return result
+
+    cmd = ['kpsewhich'] + list(filenames)
+    # stderr is unused, but reading it avoids a subprocess optimization
+    # that breaks EINTR handling in some Python versions:
+    # http://bugs.python.org/issue12493
+    # https://github.com/matplotlib/matplotlib/issues/633
+    _log.debug('find_tex_files: %s', cmd)
+    pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output = pipe.communicate()[0].decode('ascii').splitlines()
+    _log.debug('find_tex_files result: %s', output)
+    mapping = _match(filenames, output)
+    _kpsewhich_cache.update(mapping)
+    result.update(mapping)
+
+    return result
+
+
+def _match(filenames, pathnames):
+    """
+    Match filenames to pathnames in lists that are in matching order,
+    except that some filenames may lack pathnames.
+    """
+    result = {f: None for f in filenames}
+    filenames, pathnames = iter(filenames), iter(pathnames)
+    try:
+        filename, pathname = next(filenames), next(pathnames)
+        while True:
+            if pathname.endswith(os.path.sep + filename):
+                result[filename] = pathname
+                pathname = next(pathnames)
+            filename = next(filenames)
+    except StopIteration:
+        return result
+    
+
 def find_tex_file(filename, format=None):
     """
     Find a file in the texmf tree.
@@ -1023,35 +1121,12 @@ def find_tex_file(filename, format=None):
         The library that :program:`kpsewhich` is part of.
     """
 
-    if six.PY3:
-        # we expect these to always be ascii encoded, but use utf-8
-        # out of caution
-        if isinstance(filename, bytes):
-            filename = filename.decode('utf-8', errors='replace')
-        if isinstance(format, bytes):
-            format = format.decode('utf-8', errors='replace')
-
-    cmd = ['kpsewhich']
     if format is not None:
-        cmd += ['--format=' + format]
-    cmd += [filename]
-    _log.debug('find_tex_file(%s): %s', filename, cmd)
-    # stderr is unused, but reading it avoids a subprocess optimization
-    # that breaks EINTR handling in some Python versions:
-    # http://bugs.python.org/issue12493
-    # https://github.com/matplotlib/matplotlib/issues/633
-    pipe = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-    result = pipe.communicate()[0].rstrip()
-    _log.debug('find_tex_file result: %s', result)
-    return result.decode('ascii')
+        raise NotImplementedError()
+    return list(find_tex_files([filename]).values())[0]
+    
 
 
-# With multiple text objects per figure (e.g., tick labels) we may end
-# up reading the same tfm and vf files many times, so we implement a
-# simple cache. TODO: is this worth making persistent?
-
-@lru_cache()
 def _fontfile(cls, suffix, texname):
     filename = find_tex_file(texname + suffix)
     return cls(filename) if filename else None
