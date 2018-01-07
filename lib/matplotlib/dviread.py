@@ -682,6 +682,9 @@ class Vf(Dvi):
     def __getitem__(self, code):
         return self._chars[code]
 
+    def _read_postamble(self):
+        return []
+    
     def _read(self):
         """
         Read one page from the file. Return True if successful,
