@@ -210,8 +210,8 @@ class Dvi(object):
         self.fonts = {}
         self.state = _dvistate.pre
         self.baseline = self._get_baseline(filename)
-        fontnames = sorted(set(self._read_postamble()))
-        find_tex_files([x + '.tfm' for x in fontnames] + [x + '.vf' for x in fontnames])
+        fontnames = sorted(set(self._read_fonts()))
+        find_tex_files([x + suffix for x in fontnames for suffix in ('.tfm','.vf','.pfb')])
 
     def _get_baseline(self, filename):
         if rcParams['text.latex.preview']:
@@ -307,7 +307,7 @@ class Dvi(object):
         return Page(text=text, boxes=boxes, width=(maxx-minx)*d,
                     height=(maxy_pure-miny)*d, descent=descent)
 
-    def _read_postamble(self):
+    def _read_fonts(self):
         file = self.file
         offset = -1
         while offset > -100:
@@ -682,8 +682,23 @@ class Vf(Dvi):
     def __getitem__(self, code):
         return self._chars[code]
 
-    def _read_postamble(self):
-        return []
+    def _read_fonts(self):
+        fonts = []
+        while True:
+            byte = ord(self.file.read(1)[0])
+            if byte <= 242 or byte >= 248:
+                break
+            elif 243 <= byte <= 246:
+                _ = self._arg(byte - 242)
+                _, _, _, a, l = [self._arg(x) for x in (4, 4, 4, 1, 1)]
+                fontname = self.file.read(a + l)[-l:].decode('ascii')
+                fonts.append(fontname)
+            elif byte == 247:
+                _, k = self._arg(1), self._arg(1)
+                _ = self.file.read(k)
+                _, _ = self._arg(4), self._arg(4)
+        self.file.seek(0,0)
+        return fonts
     
     def _read(self):
         """
