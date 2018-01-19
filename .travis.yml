@@ -84,7 +84,14 @@ matrix:
       env: DELETE_FONT_CACHE=1 PANDAS='pandas<0.21.0' PYTEST_PEP8=pytest-pep8 RUN_PEP8=--pep8
     - python: "nightly"
       env: PRE=--pre
-    - os: osx
+  allow_failures:
+    - python: "nightly"
+
+jobs:
+  include:
+    - stage: Mac test
+      if: branch = master
+      os: osx
       osx_image: xcode7.3
       language: generic  # https://github.com/travis-ci/travis-ci/issues/2312
       env: MOCK=mock
@@ -98,8 +105,6 @@ matrix:
           # `cache` does not support `env`-like `global` so copy-paste from top
           - $HOME/.ccache  # https://github.com/travis-ci/travis-ci/issues/5853
           - $HOME/.cache/matplotlib
-  allow_failures:
-    - python: "nightly"
 
 before_install:
   - |
