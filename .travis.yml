@@ -63,9 +63,15 @@ env:
     - PYTHON_ARGS=
     - DELETE_FONT_CACHE=
 
+stages:
+  - test
+  - name: mac test
+    if: branch = master
+
 matrix:
   include:
-    - python: 2.7
+    - stage: test
+      python: 2.7
       # pytest-cov>=2.3.1 due to https://github.com/pytest-dev/pytest-cov/issues/124.
       env:
         - CYCLER=cycler==0.10
@@ -90,7 +96,6 @@ matrix:
 jobs:
   include:
     - stage: Mac test
-      if: branch = master
       os: osx
       osx_image: xcode7.3
       language: generic  # https://github.com/travis-ci/travis-ci/issues/2312
